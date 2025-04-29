@@ -19,7 +19,7 @@ if __name__ == '__main__':
     mps_able = (torch.backends.mps.is_available() and torch.backends.mps.is_built())
     device = 'cuda:0' if cuda_able else 'mps' if mps_able else 'cpu'
     # Load and prepare data
-    filename = '../task1/dataset/matched.jsonl'
+    filename = "task1/dataset/matched.jsonl"
     data = load_jsonl(filename)
     inputs, labels = prepare_data_for_model(data)
 
