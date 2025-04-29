@@ -36,6 +36,41 @@ def split_data(model_inputs, labels, train_size):
 
     return inputs_train, labels_train, inputs_val, labels_val, inputs_test, labels_test
 
+def load_hallucination_dataset():
+    dataset = load_dataset('potsawee/wiki_bio_gpt3_hallucination')
+    train_data = dataset['train']
+    test_data = dataset['test']
+
+    train_inputs = []
+    train_labels = []
+    test_inputs = []
+    test_labels = []
+
+    for item in train_data:
+        premise = item['wiki_bio_text']
+        hypothesis = item['gpt3_sentences']
+        label = item['annotation']
+        if label == 1 or label == 0.5:  # 主要不准确和次要不准确归类为非事实性
+            binary_label = 1
+        else:
+            binary_label = 0
+        train_inputs.append((premise, hypothesis))
+        train_labels.append(binary_label)
+
+    for item in test_data:
+        premise = item['wiki_bio_text']
+        hypothesis = item['gpt3_sentences']
+        label = item['annotation']
+        if label == 1 or label == 0.5:
+            binary_label = 1
+        else:
+            binary_label = 0
+        test_inputs.append((premise, hypothesis))
+        test_labels.append(binary_label)
+
+    return train_inputs, train_labels, test_inputs, test_labels
+
+
 class NLIDataset(Dataset):
     def __init__(self, inputs, labels, tokenizer, max_length):
         filtered_inputs = []
@@ -72,27 +107,3 @@ class NLIDataset(Dataset):
             'token_type_ids': encoding.token_type_ids[0],
             'labels': torch.tensor(label, dtype=torch.long)
         }
-
-def load_hallucination_dataset():
-    dataset = load_dataset('potsawee/wiki_bio_gpt3_hallucination')
-    all_data = dataset[list(dataset.keys())[0]]  # 假设数据集只有一个划分
-
-    inputs = []
-    labels = []
-
-    for item in all_data:
-        premise = item['wiki_bio_text']
-        hypothesis = item['gpt3_sentences']
-        label = item['annotation']
-        if label == 1 or label == 0.5:
-            binary_label = 1  # Non-Factual
-        else:
-            binary_label = 0  # Factual
-        inputs.append((premise, hypothesis))
-        labels.append(binary_label)
-
-    train_inputs, test_inputs, train_labels, test_labels = train_test_split(
-        inputs, labels, test_size=0.2, random_state=42
-    )
-
-    return train_inputs, train_labels, test_inputs, test_labels
