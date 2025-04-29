@@ -142,7 +142,7 @@ class NLIDataset(Dataset):
         return len(self.inputs)
 
     def __getitem__(self, index):
-        print(f"Index: {index}, Label: {self.labels[index]}")
+        # print(f"Index: {index}, Label: {self.labels[index]}")
         input_text = f"Wiki Bio: {self.inputs[index][0]} GPT3 Sentence: {self.inputs[index][1]}"
         label = self.labels[index]
 
