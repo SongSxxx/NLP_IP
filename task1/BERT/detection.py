@@ -35,6 +35,12 @@ if __name__ == '__main__':
     # 加载数据集
     dataset = load_dataset("potsawee/wiki_bio_gpt3_hallucination")
 
+    # 打印数据集的所有分割名称
+    print(dataset.keys())
+
+    # 假设数据集只有一个分割，名为 'all'
+    split_name = list(dataset.keys())[0]
+
     # 准备数据
     inputs = []
     labels = []
@@ -66,16 +72,23 @@ if __name__ == '__main__':
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
-    # 优化器
+    # Optimizer
     optimizer = AdamW(model.parameters(), lr=learning_rate)
 
     best_val_loss = float('inf')
     best_model_state = None
-    # 训练循环
+    # Training loop
     model.train()
     for epoch in range(num_epochs):
         train_loss = train_epoch(model, train_loader, optimizer, device)
-        print(f"Epoch {epoch + 1}/{num_epochs} - Training Loss: {train_loss:.3f}")
+        val_loss = evaluate(model, val_loader, device)
+        print(f"Epoch {epoch + 1}/{num_epochs} - Training Loss: {train_loss:.3f}, Validation Loss: {val_loss:.3f}")
+
+        # Check best model
+        if val_loss < best_val_loss:
+            best_val_loss = val_loss
+            best_model_state = model.state_dict()
+            print(f"New best model found at epoch {epoch + 1}")
 
     model.eval()
     all_preds = []
