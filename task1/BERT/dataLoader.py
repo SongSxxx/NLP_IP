@@ -75,15 +75,12 @@ class NLIDataset(Dataset):
 
 def load_hallucination_dataset():
     dataset = load_dataset('potsawee/wiki_bio_gpt3_hallucination')
-    train_dataset = dataset['train']
-    test_dataset = dataset['test']
+    all_data = dataset[list(dataset.keys())[0]]  # 假设数据集只有一个划分
 
-    train_inputs = []
-    train_labels = []
-    test_inputs = []
-    test_labels = []
+    inputs = []
+    labels = []
 
-    for item in train_dataset:
+    for item in all_data:
         premise = item['wiki_bio_text']
         hypothesis = item['gpt3_sentences']
         label = item['annotation']
@@ -91,18 +88,11 @@ def load_hallucination_dataset():
             binary_label = 1  # Non-Factual
         else:
             binary_label = 0  # Factual
-        train_inputs.append((premise, hypothesis))
-        train_labels.append(binary_label)
+        inputs.append((premise, hypothesis))
+        labels.append(binary_label)
 
-    for item in test_dataset:
-        premise = item['wiki_bio_text']
-        hypothesis = item['gpt3_sentences']
-        label = item['annotation']
-        if label == 1 or label == 0.5:
-            binary_label = 1  # Non-Factual
-        else:
-            binary_label = 0  # Factual
-        test_inputs.append((premise, hypothesis))
-        test_labels.append(binary_label)
+    train_inputs, test_inputs, train_labels, test_labels = train_test_split(
+        inputs, labels, test_size=0.2, random_state=42
+    )
 
     return train_inputs, train_labels, test_inputs, test_labels
