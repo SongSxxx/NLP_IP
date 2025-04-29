@@ -96,6 +96,8 @@ if __name__ == '__main__':
     timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
     results_filename = f'results/results_{timestamp}.json'
 
+    os.makedirs(os.path.dirname(results_filename), exist_ok=True)
+
     # Write results to JSON file
     with open(results_filename, 'w') as f:
         json.dump(results, f)
