@@ -146,20 +146,19 @@
 
 
 
-
 import torch
 import json
 import logging
 import argparse
 import json
 import datetime
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
-from sklearn.model_selection import train_test_split
+
 from torch.utils.data import DataLoader
 from torch.optim import AdamW
 from dataLoader import load_jsonl, prepare_data_for_model, split_data, NLIDataset, load_hallucination_dataset
 from training import train_epoch, evaluate, test_accuracy
 from transformers import BertTokenizer, BertForSequenceClassification
+from sklearn.model_selection import train_test_split
 
 if __name__ == '__main__':
     logging.basicConfig(filename='training.log', level=logging.INFO, format='%(asctime)s - %(message)s')
@@ -182,19 +181,19 @@ if __name__ == '__main__':
     device = 'cuda:0' if cuda_able else 'mps' if mps_able else 'cpu'
 
     if args.hallucination:
-        # Load hallucination dataset
+        # 加载幻觉监测数据集
         train_inputs, train_labels, test_inputs, test_labels = load_hallucination_dataset()
         inputs_train, inputs_val, labels_train, labels_val = train_test_split(train_inputs, train_labels, train_size=0.8, random_state=42)
-        num_labels = 2  # Binary classification
+        num_labels = 2  # 幻觉监测是二分类任务
     else:
-        # Load original dataset
+        # 加载原始数据集
         filename = "task1/dataset/matched.jsonl"
         data = load_jsonl(filename)
         inputs, labels = prepare_data_for_model(data)
         inputs_train, labels_train, inputs_val, labels_val, inputs_test, labels_test = split_data(
             inputs, labels, train_size=0.8
         )
-        num_labels = 3  # Original NLI task
+        num_labels = 3  # 原始任务是三分类任务
 
     tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
     model = BertForSequenceClassification.from_pretrained('bert-base-uncased', num_labels=num_labels)
@@ -232,50 +231,16 @@ if __name__ == '__main__':
 
     model.load_state_dict(best_model_state)
 
-    all_preds = []
-    all_labels = []
-    model.eval()
-    with torch.no_grad():
-        for batch in test_loader:
-            input_ids = batch['input_ids'].to(device)
-            attention_mask = batch['attention_mask'].to(device)
-            token_type_ids = batch.get('token_type_ids', None)
-            if token_type_ids is not None:
-                token_type_ids = token_type_ids.to(device)
-            labels = batch['labels'].to(device)
-
-            outputs = model(input_ids, attention_mask=attention_mask, token_type_ids=token_type_ids)
-            logits = outputs.logits
-            _, predicted = torch.max(logits, dim=1)
-
-            all_preds.extend(predicted.cpu().tolist())
-            all_labels.extend(labels.cpu().tolist())
-
-    accuracy = accuracy_score(all_labels, all_preds)
-    precision = precision_score(all_labels, all_preds)
-    recall = recall_score(all_labels, all_preds)
-    f1 = f1_score(all_labels, all_preds)
-
-    print(f"Test Accuracy: {accuracy:.3f}")
-    print(f"Test Precision: {precision:.3f}")
-    print(f"Test Recall: {recall:.3f}")
-    print(f"Test F1: {f1:.3f}")
-
-    logging.info(f"Test Accuracy: {accuracy:.3f}")
-    logging.info(f"Test Precision: {precision:.3f}")
-    logging.info(f"Test Recall: {recall:.3f}")
-    logging.info(f"Test F1: {f1:.3f}")
-
+    test_acc = test_accuracy(model, test_loader, device)
+    print(f"Test Accuracy: {test_acc:.3f}")
+    logging.info(f"Test Accuracy: {test_acc:.3f}")
     # Prepare results data
     results = {
         'batch_size': batch_size,
         'learning_rate': learning_rate,
         'num_epochs': num_epochs,
         'best_val_loss': best_val_loss,
-        'test_accuracy': accuracy,
-        'test_precision': precision,
-        'test_recall': recall,
-        'test_f1': f1
+        'test_accuracy': test_acc
     }
 
     timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
