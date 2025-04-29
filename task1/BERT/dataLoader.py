@@ -3,7 +3,7 @@ import json
 from transformers import BertTokenizer
 from torch.utils.data import Dataset
 from sklearn.model_selection import train_test_split
-
+from datasets import load_dataset
 
 def load_jsonl(filename):
     data = []
@@ -11,7 +11,6 @@ def load_jsonl(filename):
         for line in file:
             data.append(json.loads(line))
     return data
-
 
 def prepare_data_for_model(data):
     model_inputs = []
@@ -23,7 +22,6 @@ def prepare_data_for_model(data):
         model_inputs.append((sentence1, sentence2))
         labels.append(label)
     return model_inputs, labels
-
 
 def split_data(model_inputs, labels, train_size):
     inputs_train, inputs_remaining, labels_train, labels_remaining = train_test_split(
@@ -37,7 +35,6 @@ def split_data(model_inputs, labels, train_size):
     )
 
     return inputs_train, labels_train, inputs_val, labels_val, inputs_test, labels_test
-
 
 class NLIDataset(Dataset):
     def __init__(self, inputs, labels, tokenizer, max_length):
@@ -75,3 +72,37 @@ class NLIDataset(Dataset):
             'token_type_ids': encoding.token_type_ids[0],
             'labels': torch.tensor(label, dtype=torch.long)
         }
+
+def load_hallucination_dataset():
+    dataset = load_dataset('potsawee/wiki_bio_gpt3_hallucination')
+    train_dataset = dataset['train']
+    test_dataset = dataset['test']
+
+    train_inputs = []
+    train_labels = []
+    test_inputs = []
+    test_labels = []
+
+    for item in train_dataset:
+        premise = item['wiki_bio_text']
+        hypothesis = item['gpt3_sentences']
+        label = item['annotation']
+        if label == 1 or label == 0.5:
+            binary_label = 1  # Non-Factual
+        else:
+            binary_label = 0  # Factual
+        train_inputs.append((premise, hypothesis))
+        train_labels.append(binary_label)
+
+    for item in test_dataset:
+        premise = item['wiki_bio_text']
+        hypothesis = item['gpt3_sentences']
+        label = item['annotation']
+        if label == 1 or label == 0.5:
+            binary_label = 1  # Non-Factual
+        else:
+            binary_label = 0  # Factual
+        test_inputs.append((premise, hypothesis))
+        test_labels.append(binary_label)
+
+    return train_inputs, train_labels, test_inputs, test_labels
