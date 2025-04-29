@@ -4,13 +4,14 @@ import logging
 import argparse
 import json
 import datetime
+import os
 
 from torch.utils.data import DataLoader
 from torch.optim import AdamW
 from dataLoader import load_jsonl, prepare_data_for_model, split_data, NLIDataset
 from training import train_epoch, evaluate, test_accuracy
 from transformers import BertTokenizer, BertForSequenceClassification
-
+from torch.utils.data import Dataset
 
 if __name__ == '__main__':
     logging.basicConfig(filename='training.log', level=logging.INFO, format='%(asctime)s - %(message)s')
@@ -90,6 +91,10 @@ if __name__ == '__main__':
 
     timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
     results_filename = f'results/results_{timestamp}.json'
+
+    # 
+    if not os.path.exists('results'):
+        os.makedirs('results')
 
     # Write results to JSON file
     with open(results_filename, 'w') as f:
