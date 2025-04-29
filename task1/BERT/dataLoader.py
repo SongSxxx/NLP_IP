@@ -98,6 +98,14 @@ def prepare_data_for_model(data):
         sentence1 = item['sentence1']
         sentence2 = item['sentence2']
         label = item['gold_label']
+        # 确保标签是字符串
+        if isinstance(label, int):
+            if label == 0:
+                label = "entailment"
+            elif label == 1:
+                label = "neutral"
+            elif label == 2:
+                label = "contradiction"
         model_inputs.append((sentence1, sentence2))
         labels.append(label)
     return model_inputs, labels
@@ -138,20 +146,24 @@ class NLIDataset(Dataset):
     def __getitem__(self, index):
         # 添加调试信息
         print(f"Index: {index}, Label: {self.labels[index]}")
-        input_text = f"Sentence1: {self.inputs[index][0]} Sentence2: {self.inputs[index][1]} Relationship:"
-        label = self.label_map[self.labels[index]]
+        try:
+            input_text = f"Sentence1: {self.inputs[index][0]} Sentence2: {self.inputs[index][1]} Relationship:"
+            label = self.label_map[self.labels[index]]
 
-        encoding = self.tokenizer.encode_plus(
-            input_text,
-            add_special_tokens=True,
-            max_length=self.max_length,
-            return_tensors="pt",
-            padding="max_length",
-            truncation=True,
-        )
-        return {
-            'input_ids': encoding.input_ids[0],
-            'attention_mask': encoding.attention_mask[0],
-            'token_type_ids': encoding.token_type_ids[0],
-            'labels': torch.tensor(label, dtype=torch.long)
-        }
+            encoding = self.tokenizer.encode_plus(
+                input_text,
+                add_special_tokens=True,
+                max_length=self.max_length,
+                return_tensors="pt",
+                padding="max_length",
+                truncation=True,
+            )
+            return {
+                'input_ids': encoding.input_ids[0],
+                'attention_mask': encoding.attention_mask[0],
+                'token_type_ids': encoding.token_type_ids[0],
+                'labels': torch.tensor(label, dtype=torch.long)
+            }
+        except KeyError as e:
+            print(f"KeyError occurred at index {index} with label {self.labels[index]}")
+            raise e
