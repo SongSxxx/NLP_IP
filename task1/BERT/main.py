@@ -10,7 +10,7 @@ from torch.optim import AdamW
 from dataLoader import load_jsonl, prepare_data_for_model, split_data, NLIDataset
 from training import train_epoch, evaluate, test_accuracy
 from transformers import BertTokenizer, BertForSequenceClassification
-
+from torch.optim.lr_scheduler import StepLR
 
 if __name__ == '__main__':
     logging.basicConfig(filename='training.log', level=logging.INFO, format='%(asctime)s - %(message)s')
@@ -54,7 +54,12 @@ if __name__ == '__main__':
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
     # Optimizer
-    optimizer = AdamW(model.parameters(), lr=learning_rate)
+    optimizer = AdamW(model.parameters(), lr=learning_rate, weight_decay=0.01)
+    scheduler = StepLR(optimizer, step_size=1, gamma=0.1)
+
+    for epoch in range(num_epochs):
+        train_loss = train_epoch(model, train_loader, optimizer, device)
+        scheduler.step()
 
     best_val_loss = float('inf')
     best_model_state = None
