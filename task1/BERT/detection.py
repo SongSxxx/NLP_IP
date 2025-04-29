@@ -1,11 +1,14 @@
 import torch
+import argparse
+import json
+import datetime
 from torch.utils.data import DataLoader
 from torch.optim import AdamW
 from transformers import BertTokenizer, BertForSequenceClassification
 from datasets import load_dataset
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 from dataLoader import NLIDataset
-from training import train_epoch, evaluate
+from training import train_epoch, evaluate, test_accuracy
 
 # 定义函数将 NLI 标签转换为幻觉检测标签
 def nli_to_hallucination_label(nli_label):
@@ -16,9 +19,15 @@ def nli_to_hallucination_label(nli_label):
         return 1  # Non-Factual
 
 if __name__ == '__main__':
+    # 解析命令行参数
+    parser = argparse.ArgumentParser(description='Train a model with specified hyperparameters.')
+    parser.add_argument('--bs', type=int, default=32, help='Batch size')
+    parser.add_argument('--lr', type=float, default=2e-5, help='Learning rate')
+    args = parser.parse_args()
+
     # 超参数设置
-    batch_size = 16
-    learning_rate = 3e-05
+    batch_size = args.bs
+    learning_rate = args.lr
     num_epochs = 5
     max_length = 512
 
@@ -38,13 +47,13 @@ if __name__ == '__main__':
     # 打印数据集的所有分割名称
     print(dataset.keys())
 
-    # 假设数据集只有一个分割，名为 'all'
-    split_name = list(dataset.keys())[0]
+    # 使用 'evaluation' 分割
+    split_name = 'evaluation'
 
     # 准备数据
     inputs = []
     labels = []
-    for entry in dataset['train']:
+    for entry in dataset[split_name]:
         wiki_bio_text = entry['wiki_bio_text']
         gpt3_sentences = entry['gpt3_sentences']
         annotations = entry['annotation']
@@ -67,12 +76,14 @@ if __name__ == '__main__':
     test_labels = labels[int(train_size * len(labels)):]
 
     train_dataset = NLIDataset(train_inputs, train_labels, tokenizer, max_length)
+    val_dataset = NLIDataset(train_inputs, train_labels, tokenizer, max_length)
     test_dataset = NLIDataset(test_inputs, test_labels, tokenizer, max_length)
 
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
-    # Optimizer
+    # 优化器
     optimizer = AdamW(model.parameters(), lr=learning_rate)
 
     best_val_loss = float('inf')
@@ -121,3 +132,21 @@ if __name__ == '__main__':
     print(f"Precision: {precision:.3f}")
     print(f"Recall: {recall:.3f}")
     print(f"F1 Score: {f1:.3f}")
+
+    # 准备结果数据
+    results = {
+        'batch_size': batch_size,
+        'learning_rate': learning_rate,
+        'num_epochs': num_epochs,
+        'accuracy': accuracy,
+        'precision': precision,
+        'recall': recall,
+        'f1': f1
+    }
+
+    timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+    results_filename = f'results/results_{timestamp}.json'
+
+    # 将结果写入 JSON 文件
+    with open(results_filename, 'w') as f:
+        json.dump(results, f)
